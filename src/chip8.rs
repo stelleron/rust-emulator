@@ -1,5 +1,6 @@
 pub mod Chip8 {
     const START_ADDR: u16 = 0x200;
+    const FONTSET_SIZE: u16 = 0x50;
 
     struct Chip8 {
         registers: [u8; 16],
@@ -16,7 +17,7 @@ pub mod Chip8 {
 
     impl Chip8 {
         pub fn new() -> Self {
-            Chip8 {
+            let chip8 = Chip8 {
                 registers: [0; 16],
                 memory: [0; 4096],
                 index: 0,
@@ -27,7 +28,9 @@ pub mod Chip8 {
                 sound_timer: 0,
                 video: [0; 2048],
                 opcode: 0,
-            }
+            };
+
+            chip8
         }
 
         fn load_rom(&mut self, file: &str) {
