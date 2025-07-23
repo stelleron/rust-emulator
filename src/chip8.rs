@@ -70,6 +70,33 @@ pub mod Chip8 {
                 self.memory[i] = byte;
             }
         }
+
+        // CLS: Clear screen
+        fn OP_00E0(&mut self) {
+            self.video
+                .iter_mut()
+                .for_each(|m| *m = 0);
+        }
+
+        // RET: Return value
+        fn OP_00EE(&mut self) {
+            self.sp -= 1;
+            self.pc = self.stack[self.sp as usize];
+        }
+
+        // JMP: Jump to addr.
+        fn OP_1NNN(&mut self) {
+            self.pc = self.opcode & 0x0FFF;
+        }
+
+        // CALL: Call routine at addr.
+        fn OP_2NNN(&mut self) {
+            self.stack[self.sp as usize] = self.pc;
+            self.sp += 1;
+            self.pc = self.opcode & 0x0FFF;
+        }
+
+        //
     }
 }
 
