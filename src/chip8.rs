@@ -96,7 +96,7 @@ pub mod Chip8 {
             self.pc = self.opcode & 0x0FFF;
         }
 
-        // Skip if Vx = kk
+        // Skip if Vx == kk
         fn OP_3XKK(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
@@ -123,11 +123,105 @@ pub mod Chip8 {
             }
         }
 
-        // Skip if Vx = kk
+        // Set Vx = kk
         fn OP_6XKK(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
             self.registers[vx] = kk;
+        }
+
+        // Set Vx += kk
+        fn OP_7XKK(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let kk = (self.opcode & 0x00FF) as u8;
+            self.registers[vx] += kk;
+        }
+
+        // Set Vx = Vy
+        fn OP_8XY0(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            self.registers[vx] += self.registers[vy];
+        }
+
+        // Set Vx |= Vy
+        fn OP_8XY1(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            self.registers[vx] |= self.registers[vy];
+        }
+
+        // Set Vx &= Vy
+        fn OP_8XY2(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            self.registers[vx] &= self.registers[vy];
+        }
+
+        // Set Vx ^= Vy
+        fn OP_8XY3(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            self.registers[vx] ^= self.registers[vy];
+        }
+
+        // Set Vx += Vy, VF to borrow
+        fn OP_8XY4(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            let sum = vx + vy;
+            self.registers[0xF] = if sum > 255 {1} else {0};
+            self.registers[vx] = sum as u8 & 0xFF;
+
+        }
+
+        // Set Vx -= Vy, VF to NOT borrow
+        fn OP_8XY5(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            self.registers[0xF] = (self.registers[vx] > self.registers[vy]) as u8;
+            self.registers[vx] -= self.registers[vy];
+        }
+
+        // Set Vx = Vx >> 1, VF to lost bit
+        fn OP_8XY6(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.registers[0xF] = self.registers[vx] & 0x1;
+            self.registers[vx] >>= 1;
+        }
+
+        // Set Vx = Vy - Vx to NOT borrow
+        fn OP_8XY7(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            self.registers[0xF] = (self.registers[vx] < self.registers[vy]) as u8;
+            self.registers[vx] = self.registers[vy] - self.registers[vx];
+        }
+
+        // Set Vx = Vx << 1, VF to lost bit
+        fn OP_8XYE(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.registers[0xF] = (self.registers[vx] & 0x80) >> 7;
+            self.registers[vx] <<= 1;
+        }
+
+        // Skip next inst if vx != vy
+        fn OP_9XY0(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            if self.registers[vx] != self.registers[vy] {
+                self.pc += 2;
+            }
+        }
+
+        // Set I == nnn
+        fn OP_ANNN(&mut self) {
+            self.index = self.opcode & 0x0FFF;
+        }
+
+        // Jump to nnn + V0
+        fn OP_BNNN(&mut self) {
+            self.pc += self.opcode & 0x0FFF;
         }
     }
 }
