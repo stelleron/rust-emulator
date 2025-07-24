@@ -96,7 +96,39 @@ pub mod Chip8 {
             self.pc = self.opcode & 0x0FFF;
         }
 
-        //
+        // Skip if Vx = kk
+        fn OP_3XKK(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let kk = (self.opcode & 0x00FF) as u8;
+            if self.registers[vx] == kk {
+                self.pc += 2;
+            }
+        }
+
+        // Skip if Vx != kk
+        fn OP_4XKK(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let kk = (self.opcode & 0x00FF) as u8;
+            if self.registers[vx] != kk {
+                self.pc += 2;
+            }
+        }
+
+        // Skip if Vx == Vy
+        fn OP_5XY0(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            if self.registers[vx] == self.registers[vy] {
+                self.pc += 2;
+            }
+        }
+
+        // Skip if Vx = kk
+        fn OP_6XKK(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let kk = (self.opcode & 0x00FF) as u8;
+            self.registers[vx] = kk;
+        }
     }
 }
 
