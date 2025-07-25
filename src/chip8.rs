@@ -294,6 +294,60 @@ pub mod Chip8 {
             }
             self.pc -= 2;
         }
+
+        // Set delay timer = Vx
+        fn OP_FX15(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.delay_timer = self.registers[vx];
+        }
+
+        // Set sound timer = Vx
+        fn OP_FX18(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.sound_timer = self.registers[vx];
+        }
+
+        // Set index += Vx
+        fn OP_FX1E(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.index += self.registers[vx] as u16;
+        }
+
+        // Set index += Vx
+        fn OP_FX29(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.index = FONTSET_START_ADDR as u16 + (5 * self.registers[vx] as u16);
+        }
+
+        // Store BCD representation of Vx starting from index I
+        fn OP_FX33(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let mut value = self.registers[vx];
+
+            self.memory[self.index as usize + 2] = value % 10;
+            value /= 10;
+
+            self.memory[self.index as usize + 1] = value % 10;
+            value /= 10;
+
+            self.memory[self.index as usize] = value % 10;
+        }
+
+        // Copy V0..Vx to memory
+        fn OP_FX55(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            for i in 0..vx {
+                self.memory[self.index as usize + i] = self.registers[i];
+            }
+        }
+
+        // Copy V0..Vx from memory
+        fn OP_FX65(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            for i in 0..vx {
+                self.registers[i] = self.memory[self.index as usize + i];
+            }
+        }
     }
 }
 
