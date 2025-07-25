@@ -38,6 +38,7 @@ pub mod Chip8 {
         sp: u8,
         delay_timer: u8,
         sound_timer: u8,
+        keypad: [u8; 16],
         video: [u32; 2048],
         opcode: u16,
         rand_num: u8,
@@ -54,6 +55,7 @@ pub mod Chip8 {
                 sp: 0,
                 delay_timer: 0,
                 sound_timer: 0,
+                keypad: [0; 16],
                 video: [0; 2048],
                 opcode: 0,
                 rand_num: rand::rng().random(),
@@ -258,6 +260,41 @@ pub mod Chip8 {
                 }
             }
         }
+
+        // Skip if Vx == key
+        fn OP_EX9E(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            if (self.keypad[self.registers[vx] as usize] != 0) {
+                self.pc += 2;
+            }
+        }
+
+        // Skip if Vx != key
+        fn OP_EX91(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            if (self.keypad[self.registers[vx] as usize] == 0) {
+                self.pc += 2;
+            }
+        }
+
+        // Set vx to delay timer
+        fn OP_FX07(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            self.registers[vx] = self.delay_timer;
+        }
+
+        // Wait for a keypress and store the result in Vx
+        fn OP_FX0A(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            for i in 0..16 {
+                if (self.keypad[i] != 0) {
+                    self.registers[vx] = i as u8;
+                    return;
+                }
+            }
+            self.pc -= 2;
+        }
     }
 }
+
 
