@@ -26,6 +26,8 @@ pub mod Chip8 {
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     ];
+    const VIDEO_WIDTH: u8 = 64;
+    const VIDEO_HEIGHT: u8 = 32;
 
     struct Chip8 {
         registers: [u8; 16],
@@ -222,6 +224,39 @@ pub mod Chip8 {
         // Jump to nnn + V0
         fn OP_BNNN(&mut self) {
             self.pc += self.opcode & 0x0FFF;
+        }
+
+        // Vx = RND & kk
+        fn OP_CXKK(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let kk = (self.opcode & 0x00FF) as u8;
+            self.registers[vx] += kk;
+        }
+
+        // Display sprite at Vx, Vy, set VF = collision
+        fn OP_DXYN(&mut self) {
+            let vx = ((self.opcode & 0x0F00) >> 8) as usize;
+            let vy = ((self.opcode & 0x00F0) >> 4) as usize;
+            let height = self.opcode & 0x000F;
+
+            let xpos = self.registers[vx] % VIDEO_WIDTH;
+            let ypos = self.registers[vy] % VIDEO_HEIGHT;
+            self.registers[0xF] = 0;
+
+            for row in 0..height {
+                for col in 0..8 {
+                    let sprite_pxl = self.memory[ (self.index + row) as usize] & (0x80 >> col);
+                    let screen_y = (ypos as u16 + row) * VIDEO_WIDTH as u16;
+                    let screen_x = (xpos + col) as u16;
+                    let screen_pxl = &mut self.video[(screen_y + screen_x) as usize];
+                    if sprite_pxl != 0 {
+                        if (*screen_pxl == 0xFFFFFFFF) {
+                            self.registers[0xF] = 1;
+                        }
+                        *screen_pxl ^= 0xFFFFFFFF;
+                    }
+                }
+            }
         }
     }
 }
