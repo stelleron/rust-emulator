@@ -1,7 +1,5 @@
 extern crate rand;
 
-use rand::Rng;
-
 pub mod Chip8 {
     use rand::Rng;
 
@@ -42,6 +40,11 @@ pub mod Chip8 {
         video: [u32; 2048],
         opcode: u16,
         rand_num: u8,
+        table: [fn(&mut Chip8); 0xF + 1],
+        table0: [fn(&mut Chip8); 0xE + 1],
+        table8: [fn(&mut Chip8); 0xE + 1],
+        tableE: [fn(&mut Chip8); 0xE + 1],
+        tableF: [fn(&mut Chip8); 0x65 + 1],
     }
 
     impl Chip8 {
@@ -59,12 +62,59 @@ pub mod Chip8 {
                 video: [0; 2048],
                 opcode: 0,
                 rand_num: rand::rng().random(),
+                table: [Chip8::op_null; 0xF + 1],
+                table0: [Chip8::op_null; 0xE + 1],
+                table8: [Chip8::op_null; 0xE + 1],
+                tableE: [Chip8::op_null; 0xE + 1],
+                tableF: [Chip8::op_null; 0x65 + 1]
             };
+
+            chip8.table[0x0] = Chip8::op_table0;
+            chip8.table[0x1] = Chip8::op_1nnn;
+            chip8.table[0x2] = Chip8::op_2nnn;
+            chip8.table[0x3] = Chip8::op_3xkk;
+            chip8.table[0x4] = Chip8::op_4xkk;
+            chip8.table[0x5] = Chip8::op_5xy0;
+            chip8.table[0x6] = Chip8::op_6xkk;
+            chip8.table[0x7] = Chip8::op_7xkk;
+            chip8.table[0x8] = Chip8::op_table8;
+            chip8.table[0x9] = Chip8::op_9xy0;
+            chip8.table[0xA] = Chip8::op_annn;
+            chip8.table[0xB] = Chip8::op_bnnn;
+            chip8.table[0xC] = Chip8::op_cxkk;
+            chip8.table[0xD] = Chip8::op_dxyn;
+            chip8.table[0xE] = Chip8::op_tableE;
+            chip8.table[0xF] = Chip8::op_tableF;
+
+            chip8.table0[0x0] = Chip8::op_00e0;
+            chip8.table0[0xE] = Chip8::op_00ee;
+
+            chip8.table8[0x0] = Chip8::op_8xy0;
+            chip8.table8[0x1] = Chip8::op_8xy1;
+            chip8.table8[0x2] = Chip8::op_8xy2;
+            chip8.table8[0x3] = Chip8::op_8xy3;
+            chip8.table8[0x4] = Chip8::op_8xy4;
+            chip8.table8[0x5] = Chip8::op_8xy5;
+            chip8.table8[0x6] = Chip8::op_8xy6;
+            chip8.table8[0x7] = Chip8::op_8xy7;
+            chip8.table8[0xE] = Chip8::op_8xye;
+
+            chip8.tableE[0x1] = Chip8::op_ex91;
+            chip8.tableE[0xE] = Chip8::op_ex9e;
+
+            chip8.tableF[0x07] = Chip8::op_fx07;
+            chip8.tableF[0x0A] = Chip8::op_fx0a;
+            chip8.tableF[0x15] = Chip8::op_fx15;
+            chip8.tableF[0x18] = Chip8::op_fx18;
+            chip8.tableF[0x1E] = Chip8::op_fx1e;
+            chip8.tableF[0x29] = Chip8::op_fx29;
+            chip8.tableF[0x33] = Chip8::op_fx33;
+            chip8.tableF[0x55] = Chip8::op_fx55;
+            chip8.tableF[0x65] = Chip8::op_fx65;
 
             for i in 0..FONTSET_SIZE {
                 chip8.memory[i + FONTSET_START_ADDR] = FONTSET[i];
             }
-
             chip8
         }
 
@@ -75,33 +125,47 @@ pub mod Chip8 {
             }
         }
 
+        fn cycle(&mut self) {
+
+        }
+
+        // Table functions
+        // ---------------
+        fn op_null(&mut self) {}
+        fn op_table0(&mut self) {self.table0[self.opcode as usize & 0x000F](self);}
+        fn op_table8(&mut self) {self.table8[self.opcode as usize & 0x000F](self);}
+        fn op_tableE(&mut self) {self.tableE[self.opcode as usize & 0x000F](self);}
+        fn op_tableF(&mut self) {self.tableF[self.opcode as usize & 0x00FF](self);}
+
+        // ---------------
+
         // CLS: Clear screen
-        fn OP_00E0(&mut self) {
+        fn op_00e0(&mut self) {
             self.video
                 .iter_mut()
                 .for_each(|m| *m = 0);
         }
 
         // RET: Return value
-        fn OP_00EE(&mut self) {
+        fn op_00ee(&mut self) {
             self.sp -= 1;
             self.pc = self.stack[self.sp as usize];
         }
 
         // JMP: Jump to addr.
-        fn OP_1NNN(&mut self) {
+        fn op_1nnn(&mut self) {
             self.pc = self.opcode & 0x0FFF;
         }
 
         // CALL: Call routine at addr.
-        fn OP_2NNN(&mut self) {
+        fn op_2nnn(&mut self) {
             self.stack[self.sp as usize] = self.pc;
             self.sp += 1;
             self.pc = self.opcode & 0x0FFF;
         }
 
         // Skip if Vx == kk
-        fn OP_3XKK(&mut self) {
+        fn op_3xkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
             if self.registers[vx] == kk {
@@ -110,7 +174,7 @@ pub mod Chip8 {
         }
 
         // Skip if Vx != kk
-        fn OP_4XKK(&mut self) {
+        fn op_4xkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
             if self.registers[vx] != kk {
@@ -119,7 +183,7 @@ pub mod Chip8 {
         }
 
         // Skip if Vx == Vy
-        fn OP_5XY0(&mut self) {
+        fn op_5xy0(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             if self.registers[vx] == self.registers[vy] {
@@ -128,49 +192,49 @@ pub mod Chip8 {
         }
 
         // Set Vx = kk
-        fn OP_6XKK(&mut self) {
+        fn op_6xkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
             self.registers[vx] = kk;
         }
 
         // Set Vx += kk
-        fn OP_7XKK(&mut self) {
+        fn op_7xkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
             self.registers[vx] += kk;
         }
 
         // Set Vx = Vy
-        fn OP_8XY0(&mut self) {
+        fn op_8xy0(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[vx] += self.registers[vy];
         }
 
         // Set Vx |= Vy
-        fn OP_8XY1(&mut self) {
+        fn op_8xy1(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[vx] |= self.registers[vy];
         }
 
         // Set Vx &= Vy
-        fn OP_8XY2(&mut self) {
+        fn op_8xy2(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[vx] &= self.registers[vy];
         }
 
         // Set Vx ^= Vy
-        fn OP_8XY3(&mut self) {
+        fn op_8xy3(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[vx] ^= self.registers[vy];
         }
 
         // Set Vx += Vy, VF to borrow
-        fn OP_8XY4(&mut self) {
+        fn op_8xy4(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             let sum = vx + vy;
@@ -180,7 +244,7 @@ pub mod Chip8 {
         }
 
         // Set Vx -= Vy, VF to NOT borrow
-        fn OP_8XY5(&mut self) {
+        fn op_8xy5(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[0xF] = (self.registers[vx] > self.registers[vy]) as u8;
@@ -188,14 +252,14 @@ pub mod Chip8 {
         }
 
         // Set Vx = Vx >> 1, VF to lost bit
-        fn OP_8XY6(&mut self) {
+        fn op_8xy6(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.registers[0xF] = self.registers[vx] & 0x1;
             self.registers[vx] >>= 1;
         }
 
         // Set Vx = Vy - Vx to NOT borrow
-        fn OP_8XY7(&mut self) {
+        fn op_8xy7(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[0xF] = (self.registers[vx] < self.registers[vy]) as u8;
@@ -203,14 +267,14 @@ pub mod Chip8 {
         }
 
         // Set Vx = Vx << 1, VF to lost bit
-        fn OP_8XYE(&mut self) {
+        fn op_8xye(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.registers[0xF] = (self.registers[vx] & 0x80) >> 7;
             self.registers[vx] <<= 1;
         }
 
         // Skip next inst if vx != vy
-        fn OP_9XY0(&mut self) {
+        fn op_9xy0(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             if self.registers[vx] != self.registers[vy] {
@@ -219,24 +283,24 @@ pub mod Chip8 {
         }
 
         // Set I == nnn
-        fn OP_ANNN(&mut self) {
+        fn op_annn(&mut self) {
             self.index = self.opcode & 0x0FFF;
         }
 
         // Jump to nnn + V0
-        fn OP_BNNN(&mut self) {
+        fn op_bnnn(&mut self) {
             self.pc += self.opcode & 0x0FFF;
         }
 
         // Vx = RND & kk
-        fn OP_CXKK(&mut self) {
+        fn op_cxkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
             self.registers[vx] += kk;
         }
 
         // Display sprite at Vx, Vy, set VF = collision
-        fn OP_DXYN(&mut self) {
+        fn op_dxyn(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             let height = self.opcode & 0x000F;
@@ -252,7 +316,7 @@ pub mod Chip8 {
                     let screen_x = (xpos + col) as u16;
                     let screen_pxl = &mut self.video[(screen_y + screen_x) as usize];
                     if sprite_pxl != 0 {
-                        if (*screen_pxl == 0xFFFFFFFF) {
+                        if *screen_pxl == 0xFFFFFFFF {
                             self.registers[0xF] = 1;
                         }
                         *screen_pxl ^= 0xFFFFFFFF;
@@ -262,32 +326,32 @@ pub mod Chip8 {
         }
 
         // Skip if Vx == key
-        fn OP_EX9E(&mut self) {
+        fn op_ex9e(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
-            if (self.keypad[self.registers[vx] as usize] != 0) {
+            if self.keypad[self.registers[vx] as usize] != 0 {
                 self.pc += 2;
             }
         }
 
         // Skip if Vx != key
-        fn OP_EX91(&mut self) {
+        fn op_ex91(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
-            if (self.keypad[self.registers[vx] as usize] == 0) {
+            if self.keypad[self.registers[vx] as usize] == 0 {
                 self.pc += 2;
             }
         }
 
         // Set vx to delay timer
-        fn OP_FX07(&mut self) {
+        fn op_fx07(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.registers[vx] = self.delay_timer;
         }
 
         // Wait for a keypress and store the result in Vx
-        fn OP_FX0A(&mut self) {
+        fn op_fx0a(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             for i in 0..16 {
-                if (self.keypad[i] != 0) {
+                if self.keypad[i] != 0 {
                     self.registers[vx] = i as u8;
                     return;
                 }
@@ -296,31 +360,31 @@ pub mod Chip8 {
         }
 
         // Set delay timer = Vx
-        fn OP_FX15(&mut self) {
+        fn op_fx15(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.delay_timer = self.registers[vx];
         }
 
         // Set sound timer = Vx
-        fn OP_FX18(&mut self) {
+        fn op_fx18(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.sound_timer = self.registers[vx];
         }
 
         // Set index += Vx
-        fn OP_FX1E(&mut self) {
+        fn op_fx1e(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.index += self.registers[vx] as u16;
         }
 
         // Set index += Vx
-        fn OP_FX29(&mut self) {
+        fn op_fx29(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             self.index = FONTSET_START_ADDR as u16 + (5 * self.registers[vx] as u16);
         }
 
         // Store BCD representation of Vx starting from index I
-        fn OP_FX33(&mut self) {
+        fn op_fx33(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let mut value = self.registers[vx];
 
@@ -334,7 +398,7 @@ pub mod Chip8 {
         }
 
         // Copy V0..Vx to memory
-        fn OP_FX55(&mut self) {
+        fn op_fx55(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             for i in 0..vx {
                 self.memory[self.index as usize + i] = self.registers[i];
@@ -342,7 +406,7 @@ pub mod Chip8 {
         }
 
         // Copy V0..Vx from memory
-        fn OP_FX65(&mut self) {
+        fn op_fx65(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             for i in 0..vx {
                 self.registers[i] = self.memory[self.index as usize + i];
