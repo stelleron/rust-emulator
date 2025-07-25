@@ -126,7 +126,11 @@ pub mod Chip8 {
         }
 
         fn cycle(&mut self) {
-
+            self.opcode = (self.memory[self.pc as usize + 1]) as u16 | ((self.memory[self.pc as usize] << 8)) as u16;
+            self.pc += 2;
+            self.table[(self.opcode as usize & 0xF000) >> 12](self);
+            if (self.delay_timer > 0) {self.delay_timer -= 1;}
+            if (self.sound_timer > 0) {self.sound_timer -= 1;}
         }
 
         // Table functions
