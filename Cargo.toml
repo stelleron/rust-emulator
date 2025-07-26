@@ -5,3 +5,8 @@ edition = "2024"
 
 [dependencies]
 rand = "0.9.2"
+
+[dependencies.sdl2]
+features = ["use_mac_framework"]
+version = "0.38.0"  # Whichever version you are using
+

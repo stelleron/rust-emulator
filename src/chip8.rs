@@ -27,7 +27,7 @@ pub mod Chip8 {
     const VIDEO_WIDTH: u8 = 64;
     const VIDEO_HEIGHT: u8 = 32;
 
-    struct Chip8 {
+    pub struct Chip8 {
         registers: [u8; 16],
         memory: [u8; 4096],
         index: u16,
@@ -41,10 +41,10 @@ pub mod Chip8 {
         opcode: u16,
         rand_num: u8,
         table: [fn(&mut Chip8); 0xF + 1],
-        table0: [fn(&mut Chip8); 0xE + 1],
-        table8: [fn(&mut Chip8); 0xE + 1],
-        tableE: [fn(&mut Chip8); 0xE + 1],
-        tableF: [fn(&mut Chip8); 0x65 + 1],
+        table_0: [fn(&mut Chip8); 0xE + 1],
+        table_8: [fn(&mut Chip8); 0xE + 1],
+        table_e: [fn(&mut Chip8); 0xE + 1],
+        table_f: [fn(&mut Chip8); 0x65 + 1],
     }
 
     impl Chip8 {
@@ -63,13 +63,13 @@ pub mod Chip8 {
                 opcode: 0,
                 rand_num: rand::rng().random(),
                 table: [Chip8::op_null; 0xF + 1],
-                table0: [Chip8::op_null; 0xE + 1],
-                table8: [Chip8::op_null; 0xE + 1],
-                tableE: [Chip8::op_null; 0xE + 1],
-                tableF: [Chip8::op_null; 0x65 + 1]
+                table_0: [Chip8::op_null; 0xE + 1],
+                table_8: [Chip8::op_null; 0xE + 1],
+                table_e: [Chip8::op_null; 0xE + 1],
+                table_f: [Chip8::op_null; 0x65 + 1]
             };
 
-            chip8.table[0x0] = Chip8::op_table0;
+            chip8.table[0x0] = Chip8::op_table_0;
             chip8.table[0x1] = Chip8::op_1nnn;
             chip8.table[0x2] = Chip8::op_2nnn;
             chip8.table[0x3] = Chip8::op_3xkk;
@@ -77,40 +77,40 @@ pub mod Chip8 {
             chip8.table[0x5] = Chip8::op_5xy0;
             chip8.table[0x6] = Chip8::op_6xkk;
             chip8.table[0x7] = Chip8::op_7xkk;
-            chip8.table[0x8] = Chip8::op_table8;
+            chip8.table[0x8] = Chip8::op_table_8;
             chip8.table[0x9] = Chip8::op_9xy0;
             chip8.table[0xA] = Chip8::op_annn;
             chip8.table[0xB] = Chip8::op_bnnn;
             chip8.table[0xC] = Chip8::op_cxkk;
             chip8.table[0xD] = Chip8::op_dxyn;
-            chip8.table[0xE] = Chip8::op_tableE;
-            chip8.table[0xF] = Chip8::op_tableF;
+            chip8.table[0xE] = Chip8::op_table_e;
+            chip8.table[0xF] = Chip8::op_table_f;
 
-            chip8.table0[0x0] = Chip8::op_00e0;
-            chip8.table0[0xE] = Chip8::op_00ee;
+            chip8.table_0[0x0] = Chip8::op_00e0;
+            chip8.table_0[0xE] = Chip8::op_00ee;
 
-            chip8.table8[0x0] = Chip8::op_8xy0;
-            chip8.table8[0x1] = Chip8::op_8xy1;
-            chip8.table8[0x2] = Chip8::op_8xy2;
-            chip8.table8[0x3] = Chip8::op_8xy3;
-            chip8.table8[0x4] = Chip8::op_8xy4;
-            chip8.table8[0x5] = Chip8::op_8xy5;
-            chip8.table8[0x6] = Chip8::op_8xy6;
-            chip8.table8[0x7] = Chip8::op_8xy7;
-            chip8.table8[0xE] = Chip8::op_8xye;
+            chip8.table_8[0x0] = Chip8::op_8xy0;
+            chip8.table_8[0x1] = Chip8::op_8xy1;
+            chip8.table_8[0x2] = Chip8::op_8xy2;
+            chip8.table_8[0x3] = Chip8::op_8xy3;
+            chip8.table_8[0x4] = Chip8::op_8xy4;
+            chip8.table_8[0x5] = Chip8::op_8xy5;
+            chip8.table_8[0x6] = Chip8::op_8xy6;
+            chip8.table_8[0x7] = Chip8::op_8xy7;
+            chip8.table_8[0xE] = Chip8::op_8xye;
 
-            chip8.tableE[0x1] = Chip8::op_ex91;
-            chip8.tableE[0xE] = Chip8::op_ex9e;
+            chip8.table_e[0x1] = Chip8::op_ex91;
+            chip8.table_e[0xE] = Chip8::op_ex9e;
 
-            chip8.tableF[0x07] = Chip8::op_fx07;
-            chip8.tableF[0x0A] = Chip8::op_fx0a;
-            chip8.tableF[0x15] = Chip8::op_fx15;
-            chip8.tableF[0x18] = Chip8::op_fx18;
-            chip8.tableF[0x1E] = Chip8::op_fx1e;
-            chip8.tableF[0x29] = Chip8::op_fx29;
-            chip8.tableF[0x33] = Chip8::op_fx33;
-            chip8.tableF[0x55] = Chip8::op_fx55;
-            chip8.tableF[0x65] = Chip8::op_fx65;
+            chip8.table_f[0x07] = Chip8::op_fx07;
+            chip8.table_f[0x0A] = Chip8::op_fx0a;
+            chip8.table_f[0x15] = Chip8::op_fx15;
+            chip8.table_f[0x18] = Chip8::op_fx18;
+            chip8.table_f[0x1E] = Chip8::op_fx1e;
+            chip8.table_f[0x29] = Chip8::op_fx29;
+            chip8.table_f[0x33] = Chip8::op_fx33;
+            chip8.table_f[0x55] = Chip8::op_fx55;
+            chip8.table_f[0x65] = Chip8::op_fx65;
 
             for i in 0..FONTSET_SIZE {
                 chip8.memory[i + FONTSET_START_ADDR] = FONTSET[i];
@@ -126,20 +126,20 @@ pub mod Chip8 {
         }
 
         fn cycle(&mut self) {
-            self.opcode = (self.memory[self.pc as usize + 1]) as u16 | ((self.memory[self.pc as usize] << 8)) as u16;
+            self.opcode = (self.memory[self.pc as usize + 1]) as u16 | ((self.memory[self.pc as usize] as u16) << 8);
             self.pc += 2;
             self.table[(self.opcode as usize & 0xF000) >> 12](self);
-            if (self.delay_timer > 0) {self.delay_timer -= 1;}
-            if (self.sound_timer > 0) {self.sound_timer -= 1;}
+            if self.delay_timer > 0 {self.delay_timer -= 1;}
+            if self.sound_timer > 0 {self.sound_timer -= 1;}
         }
 
         // Table functions
         // ---------------
         fn op_null(&mut self) {}
-        fn op_table0(&mut self) {self.table0[self.opcode as usize & 0x000F](self);}
-        fn op_table8(&mut self) {self.table8[self.opcode as usize & 0x000F](self);}
-        fn op_tableE(&mut self) {self.tableE[self.opcode as usize & 0x000F](self);}
-        fn op_tableF(&mut self) {self.tableF[self.opcode as usize & 0x00FF](self);}
+        fn op_table_0(&mut self) {self.table_0[self.opcode as usize & 0x000F](self);}
+        fn op_table_8(&mut self) {self.table_8[self.opcode as usize & 0x000F](self);}
+        fn op_table_e(&mut self) {self.table_e[self.opcode as usize & 0x000F](self);}
+        fn op_table_f(&mut self) {self.table_f[self.opcode as usize & 0x00FF](self);}
 
         // ---------------
 
@@ -300,7 +300,7 @@ pub mod Chip8 {
         fn op_cxkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
-            self.registers[vx] += kk;
+            self.registers[vx] += self.rand_num & kk;
         }
 
         // Display sprite at Vx, Vy, set VF = collision
