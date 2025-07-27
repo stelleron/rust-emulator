@@ -24,8 +24,8 @@ pub mod Chip8 {
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     ];
-    const VIDEO_WIDTH: u8 = 64;
-    const VIDEO_HEIGHT: u8 = 32;
+    pub const VIDEO_WIDTH: u8 = 64;
+    pub const VIDEO_HEIGHT: u8 = 32;
 
     pub struct Chip8 {
         registers: [u8; 16],
@@ -118,14 +118,14 @@ pub mod Chip8 {
             chip8
         }
 
-        fn load_rom(&mut self, file: &str) {
+        pub fn load_rom(&mut self, file: &str) {
             let bin_dat = std::fs::read(file).unwrap();
             for (i,&byte) in bin_dat.iter().enumerate() {
                 self.memory[i] = byte;
             }
         }
 
-        fn cycle(&mut self) {
+        pub fn cycle(&mut self) {
             self.opcode = (self.memory[self.pc as usize + 1]) as u16 | ((self.memory[self.pc as usize] as u16) << 8);
             self.pc += 2;
             self.table[(self.opcode as usize & 0xF000) >> 12](self);
