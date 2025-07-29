@@ -1,6 +1,9 @@
 extern crate rand;
+extern crate sdl2;
 
 pub mod Chip8 {
+    use sdl2::keyboard::Keycode;
+
     use rand::Rng;
 
     const START_ADDR: u16 = 0x200;
@@ -37,14 +40,14 @@ pub mod Chip8 {
         delay_timer: u8,
         sound_timer: u8,
         keypad: [u8; 16],
-        video: [u32; 2048],
+        pub video: [u32; 2048],
         opcode: u16,
         rand_num: u8,
         table: [fn(&mut Chip8); 0xF + 1],
-        table_0: [fn(&mut Chip8); 0xE + 1],
-        table_8: [fn(&mut Chip8); 0xE + 1],
-        table_e: [fn(&mut Chip8); 0xE + 1],
-        table_f: [fn(&mut Chip8); 0x65 + 1],
+        table_0: [fn(&mut Chip8); 0xF + 1],
+        table_8: [fn(&mut Chip8); 0xF + 1],
+        table_e: [fn(&mut Chip8); 0xF + 1],
+        table_f: [fn(&mut Chip8); 0xFF + 1],
     }
 
     impl Chip8 {
@@ -63,10 +66,10 @@ pub mod Chip8 {
                 opcode: 0,
                 rand_num: rand::rng().random(),
                 table: [Chip8::op_null; 0xF + 1],
-                table_0: [Chip8::op_null; 0xE + 1],
-                table_8: [Chip8::op_null; 0xE + 1],
-                table_e: [Chip8::op_null; 0xE + 1],
-                table_f: [Chip8::op_null; 0x65 + 1]
+                table_0: [Chip8::op_null; 0xF + 1],
+                table_8: [Chip8::op_null; 0xF + 1],
+                table_e: [Chip8::op_null; 0xF + 1],
+                table_f: [Chip8::op_null; 0xFF + 1]
             };
 
             chip8.table[0x0] = Chip8::op_table_0;
@@ -121,14 +124,39 @@ pub mod Chip8 {
         pub fn load_rom(&mut self, file: &str) {
             let bin_dat = std::fs::read(file).unwrap();
             for (i,&byte) in bin_dat.iter().enumerate() {
-                self.memory[i] = byte;
+                self.memory[i + START_ADDR as usize] = byte;
+            }
+        }
+
+        pub fn process_input(&mut self, code: Keycode, down: bool) {
+            match code {
+                Keycode::X => { self.keypad[0] = down as u8}
+                Keycode::Num1 => { self.keypad[1] = down as u8}
+                Keycode::Num2 => { self.keypad[2] = down as u8}
+                Keycode::Num3 => { self.keypad[3] = down as u8}
+                Keycode::Q => { self.keypad[4] = down as u8}
+                Keycode::W => { self.keypad[5] = down as u8}
+                Keycode::E => { self.keypad[6] = down as u8}
+                Keycode::A => { self.keypad[7] = down as u8}
+                Keycode::S => { self.keypad[8] = down as u8}
+                Keycode::D => { self.keypad[9] = down as u8}
+                Keycode::Z => { self.keypad[0xA] = down as u8}
+                Keycode::C => { self.keypad[0xB] = down as u8}
+                Keycode::Num4 => { self.keypad[0xC] = down as u8}
+                Keycode::R => { self.keypad[0xD] = down as u8}
+                Keycode::F => { self.keypad[0xE] = down as u8}
+                Keycode::V => { self.keypad[0xF] = down as u8}
+                _ => ()
             }
         }
 
         pub fn cycle(&mut self) {
-            self.opcode = (self.memory[self.pc as usize + 1]) as u16 | ((self.memory[self.pc as usize] as u16) << 8);
+            self.opcode = (self.memory[self.pc as usize] as u16) << 8;
+            self.opcode |= self.memory[self.pc as usize + 1] as u16;
+
             self.pc += 2;
             self.table[(self.opcode as usize & 0xF000) >> 12](self);
+
             if self.delay_timer > 0 {self.delay_timer -= 1;}
             if self.sound_timer > 0 {self.sound_timer -= 1;}
         }

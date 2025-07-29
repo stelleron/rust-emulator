@@ -1,7 +1,7 @@
 use crate::chip8::Chip8;
 use crate::chip8::Chip8::VIDEO_HEIGHT;
 use crate::chip8::Chip8::VIDEO_WIDTH;
-use std::env;
+
 extern crate sdl2;
 
 mod chip8;
@@ -13,8 +13,8 @@ use sdl2::render::{Canvas, TextureCreator, Texture};
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use std::time::Duration;
-
+use std::env;
+use std::time::{Duration, SystemTime};
 
 fn main() {
     // Get the arguments
@@ -38,11 +38,11 @@ fn main() {
                                 .build()
                                 .unwrap();
     let mut canvas = window.into_canvas().accelerated().build().unwrap();
-    canvas.set_draw_color(Color::RGB(0, 255, 255));
+    canvas.set_draw_color(Color::RGB(255, 255, 255));
     canvas.clear();
     canvas.present();
     let texture_creator = canvas.texture_creator();
-    let texture = texture_creator.create_texture_streaming(
+    let mut texture = texture_creator.create_texture_streaming(
                                                 Some(sdl2::pixels::PixelFormatEnum::RGBA8888),
                                                 VIDEO_WIDTH as u32,
                                                 VIDEO_HEIGHT as u32
@@ -53,16 +53,41 @@ fn main() {
     let mut chip8 = Chip8::Chip8::new();
     chip8.load_rom(rom);
 
+    // Initialize some variables
+    let video_pitch = size_of::<u32>() * VIDEO_WIDTH as usize;
+    let mut last_time = SystemTime::now();
+
     // Loop
     'running: loop {
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    break 'running
+                Event::Quit {..} => break 'running,
+                Event::KeyDown { keycode, .. } => {
+                    if (keycode.unwrap() == Keycode::Escape) {
+                        break 'running
+                    } else {
+                        chip8.process_input(keycode.unwrap(), true);
+                    }
+                },
+                Event::KeyUp { keycode, .. } => {
+                    chip8.process_input(keycode.unwrap(), false);
                 },
                 _ => {}
+            }
+
+            let curr_time = SystemTime::now();
+            let dt = curr_time.duration_since(last_time).unwrap().as_millis();
+
+            if dt > delay as u128 {
+                last_time = curr_time;
+                chip8.cycle();
+
+                let video_bytes: &[u8] = bytemuck::cast_slice(&chip8.video);
+                texture.update(None, video_bytes, video_pitch).unwrap();
+
+                canvas.copy(&texture, None,None);
+                canvas.present();
             }
         }
         // The rest of the game loop goes here...

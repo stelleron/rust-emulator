@@ -1,3 +1,6 @@
 # .cargo/config.toml
 [build]
-rustflags = ["-C", "link-args=-F/Library/Frameworks"]
+rustflags = [
+    "-C", "link-args=-F/Library/Frameworks",
+    "-C", "link-args=-Wl,-rpath,/Library/Frameworks",
+]
