@@ -42,7 +42,6 @@ pub mod Chip8 {
         keypad: [u8; 16],
         pub video: [u32; 2048],
         opcode: u16,
-        rand_num: u8,
         table: [fn(&mut Chip8); 0xF + 1],
         table_0: [fn(&mut Chip8); 0xF + 1],
         table_8: [fn(&mut Chip8); 0xF + 1],
@@ -64,7 +63,6 @@ pub mod Chip8 {
                 keypad: [0; 16],
                 video: [0; 2048],
                 opcode: 0,
-                rand_num: rand::rng().random(),
                 table: [Chip8::op_null; 0xF + 1],
                 table_0: [Chip8::op_null; 0xF + 1],
                 table_8: [Chip8::op_null; 0xF + 1],
@@ -336,7 +334,8 @@ pub mod Chip8 {
         fn op_cxkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
-            self.registers[vx] += self.rand_num & kk;
+            let rand_num: u8 = rand::rng().random();
+            self.registers[vx] = rand_num & kk;
         }
 
         // Display sprite at Vx, Vy, set VF = collision

@@ -10,7 +10,7 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::env;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 fn main() {
     // Get the arguments
@@ -86,5 +86,7 @@ fn main() {
             canvas.copy(&texture, None,None).unwrap();
             canvas.present();
         }
+
+        std::thread::sleep(Duration::from_millis(1));
     }
 }
