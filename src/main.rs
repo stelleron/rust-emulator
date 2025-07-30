@@ -6,15 +6,11 @@ extern crate sdl2;
 
 mod chip8;
 
-use sdl2::libc::exit;
-use sdl2::{Sdl, VideoSubsystem};
-use sdl2::video::{Window, WindowContext};
-use sdl2::render::{Canvas, TextureCreator, Texture};
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::env;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 fn main() {
     // Get the arguments
@@ -33,12 +29,12 @@ fn main() {
     let video = context.video().unwrap();
     let window = video.window("Chip-8 Emulator",
                                     VIDEO_WIDTH as u32 * scale,
-                                    VIDEO_WIDTH as u32 * scale)
+                                    VIDEO_HEIGHT as u32 * scale)
                                 .position_centered()
                                 .build()
                                 .unwrap();
     let mut canvas = window.into_canvas().accelerated().build().unwrap();
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
+    canvas.set_draw_color(Color::RGB(0, 0,0));
     canvas.clear();
     canvas.present();
     let texture_creator = canvas.texture_creator();
@@ -59,12 +55,11 @@ fn main() {
 
     // Loop
     'running: loop {
-        canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} => break 'running,
                 Event::KeyDown { keycode, .. } => {
-                    if (keycode.unwrap() == Keycode::Escape) {
+                    if keycode.unwrap() == Keycode::Escape {
                         break 'running
                     } else {
                         chip8.process_input(keycode.unwrap(), true);
@@ -85,14 +80,10 @@ fn main() {
 
                 let video_bytes: &[u8] = bytemuck::cast_slice(&chip8.video);
                 texture.update(None, video_bytes, video_pitch).unwrap();
-
-                canvas.copy(&texture, None,None);
+                canvas.clear();
+                canvas.copy(&texture, None,None).unwrap();
                 canvas.present();
             }
         }
-        // The rest of the game loop goes here...
-
-        canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }

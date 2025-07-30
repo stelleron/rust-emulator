@@ -151,8 +151,9 @@ pub mod Chip8 {
         }
 
         pub fn cycle(&mut self) {
-            self.opcode = (self.memory[self.pc as usize] as u16) << 8;
-            self.opcode |= self.memory[self.pc as usize + 1] as u16;
+            let higher_byte = self.memory[self.pc as usize] as u16;
+            let lower_byte = self.memory[(self.pc + 1) as usize] as u16;
+            self.opcode = (higher_byte << 8) | lower_byte;
 
             self.pc += 2;
             self.table[(self.opcode as usize & 0xF000) >> 12](self);
@@ -234,14 +235,14 @@ pub mod Chip8 {
         fn op_7xkk(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let kk = (self.opcode & 0x00FF) as u8;
-            self.registers[vx] += kk;
+            self.registers[vx] = self.registers[vx].wrapping_add(kk);
         }
 
         // Set Vx = Vy
         fn op_8xy0(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
-            self.registers[vx] += self.registers[vy];
+            self.registers[vx] = self.registers[vy];
         }
 
         // Set Vx |= Vy
@@ -269,9 +270,12 @@ pub mod Chip8 {
         fn op_8xy4(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
-            let sum = vx + vy;
-            self.registers[0xF] = if sum > 255 {1} else {0};
-            self.registers[vx] = sum as u8 & 0xFF;
+
+            let (new_vx, carry) = self.registers[vx].overflowing_add(self.registers[vy]);
+            let new_vf = if carry { 1 } else { 0 };
+
+            self.registers[0xF] = new_vf;
+            self.registers[vx] = new_vx;
 
         }
 
@@ -280,7 +284,7 @@ pub mod Chip8 {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
             self.registers[0xF] = (self.registers[vx] > self.registers[vy]) as u8;
-            self.registers[vx] -= self.registers[vy];
+            self.registers[vx] = self.registers[vx].wrapping_sub(self.registers[vy]);
         }
 
         // Set Vx = Vx >> 1, VF to lost bit
@@ -321,7 +325,7 @@ pub mod Chip8 {
 
         // Jump to nnn + V0
         fn op_bnnn(&mut self) {
-            self.pc += self.opcode & 0x0FFF;
+            self.pc = self.registers[0] as u16 + (self.opcode & 0x0FFF);
         }
 
         // Vx = RND & kk
@@ -406,7 +410,7 @@ pub mod Chip8 {
         // Set index += Vx
         fn op_fx1e(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
-            self.index += self.registers[vx] as u16;
+            self.index = self.index.wrapping_add(self.registers[vx] as u16);
         }
 
         // Set index += Vx
@@ -418,21 +422,17 @@ pub mod Chip8 {
         // Store BCD representation of Vx starting from index I
         fn op_fx33(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
-            let mut value = self.registers[vx];
+            let value = self.registers[vx] as f32;
 
-            self.memory[self.index as usize + 2] = value % 10;
-            value /= 10;
-
-            self.memory[self.index as usize + 1] = value % 10;
-            value /= 10;
-
-            self.memory[self.index as usize] = value % 10;
+            self.memory[self.index as usize] = (value / 100.0).floor() as u8;
+            self.memory[self.index as usize + 1] = ((value / 10.0) % 10.0).floor() as u8;
+            self.memory[self.index as usize + 2] = (value % 10.0) as u8;
         }
 
         // Copy V0..Vx to memory
         fn op_fx55(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
-            for i in 0..vx {
+            for i in 0..=vx {
                 self.memory[self.index as usize + i] = self.registers[i];
             }
         }
@@ -440,7 +440,7 @@ pub mod Chip8 {
         // Copy V0..Vx from memory
         fn op_fx65(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
-            for i in 0..vx {
+            for i in 0..=vx {
                 self.registers[i] = self.memory[self.index as usize + i];
             }
         }
