@@ -283,8 +283,12 @@ pub mod Chip8 {
         fn op_8xy5(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
-            self.registers[0xF] = (self.registers[vx] > self.registers[vy]) as u8;
-            self.registers[vx] = self.registers[vx].wrapping_sub(self.registers[vy]);
+
+            let (new_vx, carry) = self.registers[vx].overflowing_sub(self.registers[vy]);
+            let new_vf = if carry { 1 } else { 0 };
+
+            self.registers[0xF] = new_vf;
+            self.registers[vx] = new_vx;
         }
 
         // Set Vx = Vx >> 1, VF to lost bit
@@ -339,27 +343,29 @@ pub mod Chip8 {
         fn op_dxyn(&mut self) {
             let vx = ((self.opcode & 0x0F00) >> 8) as usize;
             let vy = ((self.opcode & 0x00F0) >> 4) as usize;
-            let height = self.opcode & 0x000F;
+            let height = (self.opcode & 0x000F) as u8;
 
-            let xpos = self.registers[vx] % VIDEO_WIDTH;
-            let ypos = self.registers[vy] % VIDEO_HEIGHT;
+            let xpos = self.registers[vx] as usize % VIDEO_WIDTH as usize;
+            let ypos = self.registers[vy] as usize % VIDEO_HEIGHT as usize;
             self.registers[0xF] = 0;
 
             for row in 0..height {
+                let sprite_byte = self.memory[(self.index + row as u16) as usize];
                 for col in 0..8 {
-                    let sprite_pxl = self.memory[ (self.index + row) as usize] & (0x80 >> col);
-                    let screen_y = (ypos as u16 + row) * VIDEO_WIDTH as u16;
-                    let screen_x = (xpos + col) as u16;
-                    let screen_pxl = &mut self.video[(screen_y + screen_x) as usize];
-                    if sprite_pxl != 0 {
-                        if *screen_pxl == 0xFFFFFFFF {
+                    if sprite_byte & (0x80 >> col) != 0 {
+                        let x = (xpos + col) % VIDEO_WIDTH as usize;
+                        let y = (ypos + row as usize) % VIDEO_HEIGHT as usize;
+                        let idx = x + y * VIDEO_WIDTH as usize;
+
+                        if self.video[idx] == 0xFFFFFFFF {
                             self.registers[0xF] = 1;
                         }
-                        *screen_pxl ^= 0xFFFFFFFF;
+                        self.video[idx] ^= 0xFFFFFFFF;
                     }
                 }
             }
         }
+
 
         // Skip if Vx == key
         fn op_ex9e(&mut self) {
